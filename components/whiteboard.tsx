@@ -6,13 +6,13 @@ interface WhiteboardProps {
   height: number;
 }
 
-//for selecting
-interface Selection {
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
-}
+// Rectangle properties
+let startX: number = 0;
+let startY: number = 0;
+let widthRect: number = 0;
+let heightRect: number = 0;
+let maxWidth: number = 0;
+let maxHeight: number = 0;
 
 const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -22,9 +22,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
-  //selecting
-  const [isSelecting, setIsSelecting] = useState<boolean>(false);
-  const [selection, setSelection] = useState<Selection | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -106,6 +103,81 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
     }
   };
 
+  const startDrawingRectangle = (e: MouseEvent) => {
+    if (contextRef.current) {
+      contextRef.current.beginPath();
+      startX = e.nativeEvent.offsetX;
+      startY = e.nativeEvent.offsetY;
+
+      widthRect = 0;
+      heightRect = 0;
+
+      console.log(startX);
+      console.log(startY);
+
+      // contextRef.current.beginPath();
+      //contextRef.current.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+
+      setIsDrawing(true);
+    }
+  };
+
+  const drawRectangle = (e: MouseEvent) => {
+    if (isDrawing && contextRef.current) {
+      var currentX = e.nativeEvent.offsetX;
+      var currentY = e.nativeEvent.offsetY;
+      if (currentX < startX && currentY < startY) {
+        contextRef.current.clearRect(
+          startX + 1,
+          startY + 1,
+          widthRect - 2,
+          heightRect - 2
+        );
+      } else if (currentX > startX && currentY < startY) {
+        contextRef.current.clearRect(
+          startX - 1,
+          startY + 1,
+          widthRect + 2,
+          heightRect - 2
+        );
+      } else if (currentX < startX && currentY > startY) {
+        contextRef.current.clearRect(
+          startX + 1,
+          startY - 1,
+          widthRect - 2,
+          heightRect + 2
+        );
+      } else {
+        contextRef.current.clearRect(
+          startX - 1,
+          startY - 1,
+          widthRect + 2,
+          heightRect + 2
+        );
+      }
+
+      widthRect = e.nativeEvent.offsetX - startX!;
+      heightRect = e.nativeEvent.offsetY - startY!;
+
+      if (width > maxWidth) {
+        maxWidth = width;
+        console.log("INSIDE FIRST IF");
+      }
+      if (height > maxHeight) {
+        maxHeight = height;
+        console.log("INSIDE SECOND IF");
+      }
+
+      console.log(maxWidth);
+      console.log(maxHeight);
+
+      contextRef.current.fillStyle = "white";
+
+      contextRef.current.strokeRect(startX, startY, widthRect, heightRect);
+      // contextRef.current.clearRect(startX, startY, maxWidth, maxHeight);
+    }
+  };
+
   const stopDrawing = () => {
     contextRef.current?.closePath();
     setIsDrawing(false);
@@ -117,21 +189,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
     }
   };
 
-  const startSelecting = (e: MouseEvent) => {
-    if (contextRef.current) {
-      const mouseX = e.nativeEvent.offsetX;
-      const mouseY = e.nativeEvent.offsetY;
-
-      setIsSelecting(true);
-      setSelection({
-        startX: mouseX,
-        startY: mouseY,
-        endX: mouseX,
-        endY: mouseY,
-      });
-    }
-  };
-
   return (
     <div>
       <canvas
@@ -139,8 +196,8 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
         width={width}
         height={height}
         style={{ border: "1px solid #ffffff" }}
-        onMouseDown={startDrawing}
-        onMouseMove={draw}
+        onMouseDown={startDrawingRectangle}
+        onMouseMove={drawRectangle}
         onMouseUp={stopDrawing}
         onMouseLeave={stopDrawing}
       />
