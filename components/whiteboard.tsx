@@ -1,27 +1,31 @@
 "use client";
 import React, { useRef, useEffect, useState, MouseEvent } from "react";
+import rough from "roughjs";
 
 interface WhiteboardProps {
   width: number;
   height: number;
 }
 
-// Rectangle properties
+//declare const rough: any; // Declare rough as any directly
+
 let startX: number = 0;
 let startY: number = 0;
-let widthRect: number = 0;
-let heightRect: number = 0;
-let maxWidth: number = 0;
-let maxHeight: number = 0;
 
 const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
+  //making another canvas layer
+  const canvasDrawingRef = useRef<HTMLCanvasElement | null>(null);
+  const contextDrawingRef = useRef<CanvasRenderingContext2D | null>(null);
   //recording logic
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
+
+  console.log("OUTSIDE" + contextRef.current);
+  console.log("OUTSIDE" + contextDrawingRef.current);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -32,6 +36,19 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
         context.lineCap = "round";
         context.strokeStyle = "white";
         context.lineWidth = 2;
+      }
+    }
+
+    //same for layer 2
+    const canvas2 = canvasDrawingRef.current;
+
+    if (canvas2) {
+      const context2 = canvas2.getContext("2d");
+      if (context2) {
+        contextDrawingRef.current = context2;
+        context2.lineCap = "round";
+        context2.strokeStyle = "white";
+        context2.lineWidth = 2;
       }
     }
   }, []);
@@ -104,88 +121,155 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
   };
 
   const startDrawingRectangle = (e: MouseEvent) => {
+    console.log(contextRef.current);
+    console.log(contextDrawingRef.current);
+
     if (contextRef.current) {
-      contextRef.current.beginPath();
       startX = e.nativeEvent.offsetX;
       startY = e.nativeEvent.offsetY;
 
-      widthRect = 0;
-      heightRect = 0;
+      console.log("INSIDE START DRAWING");
 
-      console.log(startX);
-      console.log(startY);
+      //Redraw everything from layer 2 to layer 1
+      if (contextRef.current && contextDrawingRef.current) {
+        console.log("INSIDE REDRAW OF START DRAWING");
+        const imageData = contextDrawingRef.current.getImageData(
+          0,
+          0,
+          width,
+          height
+        );
 
-      // contextRef.current.beginPath();
-      //contextRef.current.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
-
+        contextRef.current.putImageData(imageData, 0, 0);
+      }
       setIsDrawing(true);
     }
   };
 
+  // const drawRectangle = (e: MouseEvent) => {
+  //   if (isDrawing && contextRef.current) {
+  //     var currentX = e.nativeEvent.offsetX;
+  //     var currentY = e.nativeEvent.offsetY;
+  //     if (currentX < startX && currentY < startY) {
+  //       contextRef.current.clearRect(
+  //         startX + 1,
+  //         startY + 1,
+  //         widthRect - 2,
+  //         heightRect - 2
+  //       );
+  //     } else if (currentX > startX && currentY < startY) {
+  //       contextRef.current.clearRect(
+  //         startX - 1,
+  //         startY + 1,
+  //         widthRect + 2,
+  //         heightRect - 2
+  //       );
+  //     } else if (currentX < startX && currentY > startY) {
+  //       contextRef.current.clearRect(
+  //         startX + 1,
+  //         startY - 1,
+  //         widthRect - 2,
+  //         heightRect + 2
+  //       );
+  //     } else {
+  //       contextRef.current.clearRect(
+  //         startX - 1,
+  //         startY - 1,
+  //         widthRect + 2,
+  //         heightRect + 2
+  //       );
+  //     }
+
+  //     widthRect = e.nativeEvent.offsetX - startX!;
+  //     heightRect = e.nativeEvent.offsetY - startY!;
+
+  //     if (width > maxWidth) {
+  //       maxWidth = width;
+  //       console.log("INSIDE FIRST IF");
+  //     }
+  //     if (height > maxHeight) {
+  //       maxHeight = height;
+  //       console.log("INSIDE SECOND IF");
+  //     }
+
+  //     contextRef.current.fillStyle = "white";
+
+  //     contextRef.current.strokeRect(startX, startY, widthRect, heightRect);
+  //     // contextRef.current.clearRect(startX, startY, maxWidth, maxHeight);
+  //   }
+  // };
+
   const drawRectangle = (e: MouseEvent) => {
     if (isDrawing && contextRef.current) {
-      var currentX = e.nativeEvent.offsetX;
-      var currentY = e.nativeEvent.offsetY;
-      if (currentX < startX && currentY < startY) {
-        contextRef.current.clearRect(
-          startX + 1,
-          startY + 1,
-          widthRect - 2,
-          heightRect - 2
+      const currentX = e.nativeEvent.offsetX;
+      const currentY = e.nativeEvent.offsetY;
+
+      console.log("INSIDE  DRAWING");
+
+      //Redraw everything from layer 2 to layer 1
+      if (contextRef.current && contextDrawingRef.current) {
+        console.log("INSIDE FIRST REDRAW OF DRAWING");
+        const imageData = contextDrawingRef.current.getImageData(
+          0,
+          0,
+          width,
+          height
         );
-      } else if (currentX > startX && currentY < startY) {
-        contextRef.current.clearRect(
-          startX - 1,
-          startY + 1,
-          widthRect + 2,
-          heightRect - 2
-        );
-      } else if (currentX < startX && currentY > startY) {
-        contextRef.current.clearRect(
-          startX + 1,
-          startY - 1,
-          widthRect - 2,
-          heightRect + 2
-        );
-      } else {
-        contextRef.current.clearRect(
-          startX - 1,
-          startY - 1,
-          widthRect + 2,
-          heightRect + 2
-        );
+
+        contextRef.current.putImageData(imageData, 0, 0);
       }
 
-      widthRect = e.nativeEvent.offsetX - startX!;
-      heightRect = e.nativeEvent.offsetY - startY!;
+      // Clear the canvas
+      contextRef.current.clearRect(0, 0, width, height);
 
-      if (width > maxWidth) {
-        maxWidth = width;
-        console.log("INSIDE FIRST IF");
+      //Redraw everything from layer 2 to layer 1
+      if (contextRef.current && contextDrawingRef.current) {
+        console.log("INSIDE SECOND REDRAW OF DRAWING");
+        const imageData = contextDrawingRef.current.getImageData(
+          0,
+          0,
+          width,
+          height
+        );
+
+        contextRef.current.putImageData(imageData, 0, 0);
       }
-      if (height > maxHeight) {
-        maxHeight = height;
-        console.log("INSIDE SECOND IF");
-      }
 
-      console.log(maxWidth);
-      console.log(maxHeight);
+      const roughCanvas = rough.canvas(canvasRef.current!);
+      const rectangle = roughCanvas.rectangle(
+        startX,
+        startY,
+        currentX - startX,
+        currentY - startY,
+        {
+          roughness: 2,
+          stroke: "white",
+        }
+      );
 
-      contextRef.current.fillStyle = "white";
-
-      contextRef.current.strokeRect(startX, startY, widthRect, heightRect);
-      // contextRef.current.clearRect(startX, startY, maxWidth, maxHeight);
+      roughCanvas.draw(rectangle);
     }
   };
 
   const stopDrawing = () => {
-    contextRef.current?.closePath();
     setIsDrawing(false);
+
+    console.log("INSIDE STOP DRAWING");
+
+    // Redraw everything from layer 1 to layer 2
+    if (contextRef.current && contextDrawingRef.current) {
+      console.log("INSIDE REDRAW OF STOP DRAWING");
+      const imageData = contextRef.current.getImageData(0, 0, width, height);
+
+      contextDrawingRef.current.putImageData(imageData, 0, 0);
+    }
   };
 
   const clearDrawing = () => {
-    if (contextRef.current) {
+    if (contextRef.current && contextDrawingRef.current) {
+      // Clear the canvas
       contextRef.current.clearRect(0, 0, width, height);
+      contextDrawingRef.current.clearRect(0, 0, width, height);
     }
   };
 
@@ -201,8 +285,21 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
         onMouseUp={stopDrawing}
         onMouseLeave={stopDrawing}
       />
+      <canvas
+        ref={canvasDrawingRef}
+        width={width}
+        height={height}
+        style={{ border: "1px solid #ffffff", display: "none" }}
+      />
       <button style={{ border: "1px solid #ffffff" }} onClick={clearDrawing}>
         Clear
+      </button>
+      <button
+        style={{ border: "1px solid #ffffff" }}
+        onClick={downloadRecording}
+        disabled={recordedChunks.length === 0}
+      >
+        Undo
       </button>
       <button
         style={{ border: "1px solid #ffffff" }}
