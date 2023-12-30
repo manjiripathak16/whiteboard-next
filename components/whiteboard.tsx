@@ -1,5 +1,6 @@
 "use client";
 import React, { useRef, useEffect, useState, MouseEvent } from "react";
+import { SketchPicker } from "react-color";
 import rough from "roughjs";
 
 interface WhiteboardProps {
@@ -30,6 +31,10 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
   //state for undo logic
   const [prevDrawing, setPrevDrawing] = useState<ImageData[]>([]);
 
+  //colour picker
+  const [selectedColor, setSelectedColor] = useState<string>("#ffffff"); // Default color is black
+  const [isClickedCP, setIsClickedCP] = useState<boolean>(false);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -37,7 +42,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
       if (context) {
         contextRef.current = context;
         context.lineCap = "round";
-        context.strokeStyle = "white";
+        context.strokeStyle = selectedColor;
         context.lineWidth = 2;
       }
     }
@@ -54,7 +59,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
         context2.lineWidth = 2;
       }
     }
-  }, []);
+  }, [selectedColor]);
 
   useEffect(() => {
     if (isRecording) {
@@ -207,7 +212,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
         currentY - startY,
         {
           roughness: 2,
-          stroke: "white",
+          stroke: selectedColor,
         }
       );
 
@@ -297,7 +302,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
 
       const circle = roughCanvas.circle(startX, startY, diameter, {
         roughness: 2,
-        stroke: "white",
+        stroke: selectedColor,
       });
 
       roughCanvas.draw(circle);
@@ -418,6 +423,21 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
       >
         circle
       </button>
+      <button
+        style={{ border: "1px solid #ffffff", margin: "2px" }}
+        onClick={() => {
+          setIsClickedCP(!isClickedCP);
+        }}
+      >
+        menu
+      </button>
+      {/* Render the color picker */}
+      {isClickedCP && (
+        <SketchPicker
+          color={selectedColor}
+          onChange={(color) => setSelectedColor(color.hex)}
+        />
+      )}
     </div>
   );
 };
