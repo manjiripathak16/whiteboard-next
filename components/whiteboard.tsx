@@ -24,8 +24,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
 
-  console.log("OUTSIDE" + contextRef.current);
-  console.log("OUTSIDE" + contextDrawingRef.current);
+  //drawing shape state for rectangle/circle buttons
+  const [drawingShape, setDrawingShape] = useState<String>("freeform");
+
+  //state for undo logic
+  const [prevDrawing, setPrevDrawing] = useState<ImageData[]>([]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -105,8 +108,20 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
     }
   };
 
+  //freeform
+
   const startDrawing = (e: MouseEvent) => {
-    if (contextRef.current) {
+    if (contextRef.current && contextDrawingRef.current && prevDrawing) {
+      const imageDataForUndo = contextDrawingRef.current.getImageData(
+        0,
+        0,
+        width,
+        height
+      );
+
+      // Save the starting point for undo purposes
+      setPrevDrawing((prevDrawing) => [...prevDrawing, imageDataForUndo]);
+
       contextRef.current.beginPath();
       contextRef.current.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
       setIsDrawing(true);
@@ -120,19 +135,25 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
     }
   };
 
-  const startDrawingRectangle = (e: MouseEvent) => {
-    console.log(contextRef.current);
-    console.log(contextDrawingRef.current);
+  //rectangle
 
-    if (contextRef.current) {
+  const startDrawingRectangle = (e: MouseEvent) => {
+    if (contextRef.current && contextDrawingRef.current && prevDrawing) {
       startX = e.nativeEvent.offsetX;
       startY = e.nativeEvent.offsetY;
 
-      console.log("INSIDE START DRAWING");
+      const imageDataForUndo = contextDrawingRef.current.getImageData(
+        0,
+        0,
+        width,
+        height
+      );
+
+      // Save the starting point for undo purposes
+      setPrevDrawing((prevDrawing) => [...prevDrawing, imageDataForUndo]);
 
       //Redraw everything from layer 2 to layer 1
       if (contextRef.current && contextDrawingRef.current) {
-        console.log("INSIDE REDRAW OF START DRAWING");
         const imageData = contextDrawingRef.current.getImageData(
           0,
           0,
@@ -146,69 +167,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
     }
   };
 
-  // const drawRectangle = (e: MouseEvent) => {
-  //   if (isDrawing && contextRef.current) {
-  //     var currentX = e.nativeEvent.offsetX;
-  //     var currentY = e.nativeEvent.offsetY;
-  //     if (currentX < startX && currentY < startY) {
-  //       contextRef.current.clearRect(
-  //         startX + 1,
-  //         startY + 1,
-  //         widthRect - 2,
-  //         heightRect - 2
-  //       );
-  //     } else if (currentX > startX && currentY < startY) {
-  //       contextRef.current.clearRect(
-  //         startX - 1,
-  //         startY + 1,
-  //         widthRect + 2,
-  //         heightRect - 2
-  //       );
-  //     } else if (currentX < startX && currentY > startY) {
-  //       contextRef.current.clearRect(
-  //         startX + 1,
-  //         startY - 1,
-  //         widthRect - 2,
-  //         heightRect + 2
-  //       );
-  //     } else {
-  //       contextRef.current.clearRect(
-  //         startX - 1,
-  //         startY - 1,
-  //         widthRect + 2,
-  //         heightRect + 2
-  //       );
-  //     }
-
-  //     widthRect = e.nativeEvent.offsetX - startX!;
-  //     heightRect = e.nativeEvent.offsetY - startY!;
-
-  //     if (width > maxWidth) {
-  //       maxWidth = width;
-  //       console.log("INSIDE FIRST IF");
-  //     }
-  //     if (height > maxHeight) {
-  //       maxHeight = height;
-  //       console.log("INSIDE SECOND IF");
-  //     }
-
-  //     contextRef.current.fillStyle = "white";
-
-  //     contextRef.current.strokeRect(startX, startY, widthRect, heightRect);
-  //     // contextRef.current.clearRect(startX, startY, maxWidth, maxHeight);
-  //   }
-  // };
-
   const drawRectangle = (e: MouseEvent) => {
     if (isDrawing && contextRef.current) {
       const currentX = e.nativeEvent.offsetX;
       const currentY = e.nativeEvent.offsetY;
 
-      console.log("INSIDE  DRAWING");
-
       //Redraw everything from layer 2 to layer 1
       if (contextRef.current && contextDrawingRef.current) {
-        console.log("INSIDE FIRST REDRAW OF DRAWING");
         const imageData = contextDrawingRef.current.getImageData(
           0,
           0,
@@ -224,7 +189,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
 
       //Redraw everything from layer 2 to layer 1
       if (contextRef.current && contextDrawingRef.current) {
-        console.log("INSIDE SECOND REDRAW OF DRAWING");
         const imageData = contextDrawingRef.current.getImageData(
           0,
           0,
@@ -251,14 +215,100 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
     }
   };
 
+  //circle
+
+  const calculateDistance = (
+    startX: any,
+    startY: any,
+    currentX: any,
+    currentY: any
+  ) => {
+    const deltaX = currentX - startX;
+    const deltaY = currentY - startY;
+
+    const distance = Math.sqrt(deltaX ** 2 + deltaY ** 2);
+
+    return distance;
+  };
+  const startDrawingCircle = (e: MouseEvent) => {
+    if (contextRef.current && contextDrawingRef.current && prevDrawing) {
+      startX = e.nativeEvent.offsetX;
+      startY = e.nativeEvent.offsetY;
+
+      const imageDataForUndo = contextDrawingRef.current.getImageData(
+        0,
+        0,
+        width,
+        height
+      );
+
+      // Save the starting point for undo purposes
+      setPrevDrawing((prevDrawing) => [...prevDrawing, imageDataForUndo]);
+
+      //Redraw everything from layer 2 to layer 1
+      if (contextRef.current && contextDrawingRef.current) {
+        const imageData = contextDrawingRef.current.getImageData(
+          0,
+          0,
+          width,
+          height
+        );
+
+        contextRef.current.putImageData(imageData, 0, 0);
+      }
+      setIsDrawing(true);
+    }
+  };
+
+  const drawCircle = (e: MouseEvent) => {
+    if (isDrawing && contextRef.current && contextDrawingRef.current) {
+      const currentX = e.nativeEvent.offsetX;
+      const currentY = e.nativeEvent.offsetY;
+
+      //Redraw everything from layer 2 to layer 1
+      if (contextRef.current && contextDrawingRef.current) {
+        const imageData = contextDrawingRef.current.getImageData(
+          0,
+          0,
+          width,
+          height
+        );
+
+        contextRef.current.putImageData(imageData, 0, 0);
+      }
+
+      // Clear the canvas
+      contextRef.current.clearRect(0, 0, width, height);
+
+      //Redraw everything from layer 2 to layer 1
+      if (contextRef.current && contextDrawingRef.current) {
+        const imageData = contextDrawingRef.current.getImageData(
+          0,
+          0,
+          width,
+          height
+        );
+
+        contextRef.current.putImageData(imageData, 0, 0);
+      }
+
+      const roughCanvas = rough.canvas(canvasRef.current!);
+      const diameter = calculateDistance(startX, startY, currentX, currentY);
+
+      const circle = roughCanvas.circle(startX, startY, diameter, {
+        roughness: 2,
+        stroke: "white",
+      });
+
+      roughCanvas.draw(circle);
+    }
+  };
+
   const stopDrawing = () => {
     setIsDrawing(false);
 
-    console.log("INSIDE STOP DRAWING");
-
     // Redraw everything from layer 1 to layer 2
     if (contextRef.current && contextDrawingRef.current) {
-      console.log("INSIDE REDRAW OF STOP DRAWING");
       const imageData = contextRef.current.getImageData(0, 0, width, height);
 
       contextDrawingRef.current.putImageData(imageData, 0, 0);
@@ -270,6 +320,28 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
       // Clear the canvas
       contextRef.current.clearRect(0, 0, width, height);
       contextDrawingRef.current.clearRect(0, 0, width, height);
+      setPrevDrawing([]);
+    }
+  };
+
+  //function to change shape
+  const changeShape = (shape: String) => {
+    setDrawingShape(shape);
+  };
+
+  //function for undo
+  const undoDrawing = () => {
+    if (contextRef.current && prevDrawing) {
+      const lastDrawing = prevDrawing[prevDrawing.length - 1];
+      contextRef.current.putImageData(lastDrawing, 0, 0);
+      setPrevDrawing((prevDrawing) => prevDrawing.slice(0, -1));
+    }
+
+    // Redraw everything from layer 1 to layer 2
+    if (contextRef.current && contextDrawingRef.current) {
+      const imageData = contextRef.current.getImageData(0, 0, width, height);
+
+      contextDrawingRef.current.putImageData(imageData, 0, 0);
     }
   };
 
@@ -280,8 +352,20 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
         width={width}
         height={height}
         style={{ border: "1px solid #ffffff" }}
-        onMouseDown={startDrawingRectangle}
-        onMouseMove={drawRectangle}
+        onMouseDown={
+          drawingShape == "rectangle"
+            ? startDrawingRectangle
+            : drawingShape == "circle"
+            ? startDrawingCircle
+            : startDrawing
+        }
+        onMouseMove={
+          drawingShape == "rectangle"
+            ? drawRectangle
+            : drawingShape == "circle"
+            ? drawCircle
+            : draw
+        }
         onMouseUp={stopDrawing}
         onMouseLeave={stopDrawing}
       />
@@ -291,28 +375,48 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ width, height }) => {
         height={height}
         style={{ border: "1px solid #ffffff", display: "none" }}
       />
-      <button style={{ border: "1px solid #ffffff" }} onClick={clearDrawing}>
+      <button
+        style={{ border: "1px solid #ffffff", margin: "2px" }}
+        onClick={clearDrawing}
+      >
         Clear
       </button>
       <button
-        style={{ border: "1px solid #ffffff" }}
-        onClick={downloadRecording}
-        disabled={recordedChunks.length === 0}
+        style={{ border: "1px solid #ffffff", margin: "2px" }}
+        onClick={prevDrawing.length ? undoDrawing : () => {}}
       >
         Undo
       </button>
       <button
-        style={{ border: "1px solid #ffffff" }}
+        style={{ border: "1px solid #ffffff", margin: "2px" }}
         onClick={() => setIsRecording(!isRecording)}
       >
         {isRecording ? "Stop Recording" : "Start Recording"}
       </button>
       <button
-        style={{ border: "1px solid #ffffff" }}
+        style={{ border: "1px solid #ffffff", margin: "2px" }}
         onClick={downloadRecording}
         disabled={recordedChunks.length === 0}
       >
         Download Recording
+      </button>
+      <button
+        style={{ border: "1px solid #ffffff", margin: "2px" }}
+        onClick={() => changeShape("freeform")}
+      >
+        freeform
+      </button>
+      <button
+        style={{ border: "1px solid #ffffff", margin: "2px" }}
+        onClick={() => changeShape("rectangle")}
+      >
+        rectangle
+      </button>
+      <button
+        style={{ border: "1px solid #ffffff", margin: "2px" }}
+        onClick={() => changeShape("circle")}
+      >
+        circle
       </button>
     </div>
   );
